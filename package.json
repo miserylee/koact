@@ -1,0 +1,31 @@
+{
+  "name": "koact-ts",
+  "version": "0.0.1",
+  "main": "./lib/index.js",
+  "typings": "./lib/index.d.ts",
+  "private": false,
+  "license": "MIT",
+  "author": "MiseryLee <miserylee@foxmail.com>",
+  "description": "",
+  "scripts": {
+    "build": "rm -rf ./lib && tsc",
+    "prebuild": "yarn run lint && yarn test",
+    "start": "ts-node ./src/index",
+    "lint": "tslint -c tslint.json ./src/**/*.ts",
+    "test": "mocha --require ts-node/register ./test/*.spec.ts",
+    "prepublishOnly": "yarn build"
+  },
+  "pre-commit": [
+    "prepublishOnly"
+  ],
+  "devDependencies": {
+    "@types/mocha": "5.2.0",
+    "@types/node": "10.0.8",
+    "mocha": "5.1.1",
+    "pre-commit": "1.2.2",
+    "ts-node": "6.0.3",
+    "tslint": "5.10.0",
+    "tslint-clean-code": "0.2.7",
+    "typescript": "2.8.3"
+  }
+}
