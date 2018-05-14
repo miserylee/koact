@@ -1,6 +1,6 @@
 {
-  "name": "koact-ts",
-  "version": "0.0.1",
+  "name": "koact",
+  "version": "4.0.0",
   "main": "./lib/index.js",
   "typings": "./lib/index.d.ts",
   "private": false,
@@ -11,6 +11,7 @@
     "build": "rm -rf ./lib && tsc",
     "prebuild": "yarn run lint && yarn test",
     "start": "ts-node ./src/index",
+    "start-example": "ts-node ./test/index.ts",
     "lint": "tslint -c tslint.json ./src/**/*.ts",
     "test": "mocha --require ts-node/register ./test/*.spec.ts",
     "prepublishOnly": "yarn build"
@@ -19,13 +20,22 @@
     "prepublishOnly"
   ],
   "devDependencies": {
+    "@types/koa": "^2.0.45",
     "@types/mocha": "5.2.0",
     "@types/node": "10.0.8",
+    "koa": "^2.5.1",
     "mocha": "5.1.1",
     "pre-commit": "1.2.2",
     "ts-node": "6.0.3",
     "tslint": "5.10.0",
     "tslint-clean-code": "0.2.7",
     "typescript": "2.8.3"
+  },
+  "dependencies": {
+    "@types/formidable": "^1.0.31",
+    "@types/koa-router": "^7.0.28",
+    "koa-body": "^2.5.0",
+    "koa-router": "^7.4.0",
+    "schema.io": "^0.1.2"
   }
 }
