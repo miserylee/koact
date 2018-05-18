@@ -1,3 +1,3 @@
-# koact-ts
+# koact
 
-##  ![NPM version](https://img.shields.io/npm/v/koact-ts.svg?style=flat)
+##  ![NPM version](https://img.shields.io/npm/v/koact.svg?style=flat)
