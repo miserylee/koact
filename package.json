@@ -6,7 +6,7 @@
   "private": false,
   "license": "MIT",
   "author": "MiseryLee <miserylee@foxmail.com>",
-  "description": "",
+  "description": "Your smart routes manager.",
   "scripts": {
     "build": "rm -rf ./lib && tsc",
     "prebuild": "yarn run lint && yarn test",
