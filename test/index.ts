@@ -4,11 +4,18 @@ import koact from '../src';
 
 const koa = new Koa();
 
+koa.use(async (ctx, next) => {
+  try {
+    await next();
+  } catch (error) {
+    ctx.body = {
+      error: {
+        name: error.name,
+        message: error.message,
+      },
+    };
+  }
+});
 koa.use(koact(path.resolve(__dirname, './routes')));
 
-koa.listen(4000);
-
-describe('Say hello', () => {
-  it('to world should ok', () => {
-  });
-});
+koa.listen(4000, () => console.log('server started.'));
