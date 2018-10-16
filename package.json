@@ -1,6 +1,6 @@
 {
   "name": "koact",
-  "version": "4.3.4",
+  "version": "4.3.5",
   "main": "./lib/index.js",
   "typings": "./lib/index.d.ts",
   "private": false,
@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "@types/formidable": "^1.0.31",
-    "@types/koa-router": "^7.0.28",
+    "@types/koa-router": "^7.0.32",
     "koa-body": "^2.5.0",
     "koa-router": "^7.4.0",
     "schema.io": "^0.3.2"
