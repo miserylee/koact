@@ -4,8 +4,8 @@ export default {
   params: {
     id: String,
   },
-  async handler({ id }: { id: string }) {
-    return `Hello ${id}`;
+  async handler({ params }: { params: { id: string } }) {
+    return `Hello ${params.id}`;
   },
   plugins: [api => {
     if (!api.pre) {
