@@ -5,7 +5,8 @@ export default {
   body: {
     file: Object,
   },
-  async handler(params, query, { file }: { file: File }) {
+  async handler({ body }: { body: { file: File } }) {
+    const { file } = body;
     return { file };
   },
 } as IAPI;

@@ -1,3 +1,3 @@
-import { IAPI } from '../../../../src';
+import { IAPI } from '../../../../../src';
 
 export default {} as IAPI;

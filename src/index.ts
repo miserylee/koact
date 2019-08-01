@@ -1,6 +1,8 @@
 import * as fs from 'fs';
 import { Context, Middleware } from 'koa';
 import * as bodyParser from 'koa-body';
+import * as compose from 'koa-compose';
+import { IMiddleware } from 'koa-router';
 import * as Router from 'koa-router';
 import * as path from 'path';
 import Schema from 'schema.io';
@@ -11,23 +13,25 @@ export interface IObject {
   [key: string]: any;
 }
 
-export type APIHandler = (params: any, query: any, body: any, ctx: Context, next: () => Promise<void>) => Promise<any>;
+export type APIHandler<P, Q, B, R> = (data: { params: P, query: Q, body: B, ctx: Context, next: () => Promise<void> }) => Promise<R>;
 
-export interface IAPIBase extends IObject {
+export interface IAPIBase<P = any, Q = any, B = any, R = any> extends IObject {
   params?: IObject;
   query?: IObject;
   body?: IObject;
   res?: any;
-  handler?: APIHandler;
+  handler?: APIHandler<P, Q, B, R>;
   pre?: Middleware[];
+  useCustomBodyParser?: boolean;
 }
 
-export interface IAPI extends IAPIBase {
+export interface IAPI<P = any, Q = any, B = any, R = any> extends IAPIBase<P, Q, B, R> {
   plugins?: Plugin[];
 }
 
 export interface IMetaBase extends IObject {
   title?: string;
+  notSubDoc?: boolean;
 }
 
 export interface IMeta extends IMetaBase {
@@ -41,24 +45,38 @@ export interface IOptions {
   resolves?: string[];
 }
 
+const validate = (schema: Schema, input: any, errorName: string) => {
+  try {
+    return schema.validate(input);
+  } catch (e) {
+    e.name = errorName;
+    throw e;
+  }
+};
+
 const routesOfPath = (routesPath: string, plugins: Plugin[] = [], parent: string = '', options: IOptions = {}) => {
   const router = new Router();
   const links = fs.readdirSync(routesPath);
   let memo: Array<{
-    name: string;
     method: Methods;
     path: string;
-    params: any;
-    query: any;
-    body: any;
-    res: any;
+    version: {
+      [v: string]: {
+        name: string;
+        params: any;
+        query: any;
+        body: any;
+        res: any;
+      };
+    };
   }> = [];
+  let metaPre: Middleware[] = [];
   const meta = (() => {
     try {
       const { pre = [], ...others } = require(path.resolve(routesPath, 'META')).default || {} as IMeta;
       const metaPlugins = others.plugins || [];
       Reflect.deleteProperty(others, 'plugins');
-      router.use(...pre);
+      metaPre = pre;
       plugins = [...metaPlugins, ...plugins];
       return others as IMetaBase;
     } catch (error) {
@@ -69,6 +87,23 @@ const routesOfPath = (routesPath: string, plugins: Plugin[] = [], parent: string
     meta: IMetaBase;
     path: string;
   }> = [];
+  const pathname = parent || '/';
+  const routeModules: {
+    [method: string]: {
+      [version: string]: {
+        summary: {
+          name: string;
+          params: any;
+          query: any;
+          body: any;
+          res: any;
+          [others: string]: any;
+        },
+        middleware: IMiddleware,
+      };
+    };
+  } = {};
+
   links.forEach(link => {
     if (/^_/.test(link)) {
       return;
@@ -80,6 +115,7 @@ const routesOfPath = (routesPath: string, plugins: Plugin[] = [], parent: string
       if (subRouter.doc) {
         subDocs.push(subRouter.doc);
       }
+      subDocs.push(...subRouter.subDocs);
       router.use(p, subRouter.router.routes(), subRouter.router.allowedMethods());
       memo.push(...subRouter.memo);
     } else {
@@ -90,75 +126,94 @@ const routesOfPath = (routesPath: string, plugins: Plugin[] = [], parent: string
       if (['META'].includes(name)) {
         return;
       }
-      const [method, apiName] = name.split('#');
+      const [methodWithVersion, apiName] = name.split('#');
+      const [method, version = 'default'] = methodWithVersion.split('.');
       const umethod = method.toUpperCase();
       if ((router as any).methods.includes(umethod)) {
-        const pathname = parent || '/';
         const lmethod = method.toLowerCase() as Methods;
         const api = require(fullLink).default || {} as IAPI;
         const apiPlugins = api.plugins || [];
         Reflect.deleteProperty(api, 'plugins');
-        const { params, query, body, res, handler = async () => undefined, pre = [], ...others } = [...apiPlugins, ...plugins].reduce((a, plugin) => {
+        const { params, query, body, res, handler = async () => undefined, pre = [], useCustomBodyParser = false, ...others } = [...apiPlugins, ...plugins].reduce((a, plugin) => {
           return plugin(a, {
             name: apiName,
             method: umethod,
             path: pathname,
           });
-        }, api as IAPIBase);
+        }, api as IAPIBase) as IAPIBase;
 
         const paramsSchema = new Schema(params);
         const querySchema = new Schema(query);
         const bodySchema = new Schema(body);
         const resSchema = new Schema(res);
 
-        memo.push({
-          name: apiName,
-          method: lmethod,
-          path: pathname,
-          params: paramsSchema.example(),
-          query: querySchema.example(),
-          body: bodySchema.example(),
-          res: resSchema.example(),
-          ...others,
-        });
-        const preMiddleware: Middleware[] = pre;
-        if (lmethod === 'post') {
+        const preMiddleware: Middleware[] = [...metaPre, ...pre];
+        if (!useCustomBodyParser && ['post', 'put'].includes(lmethod)) {
           preMiddleware.push(bodyParser({ multipart: true }));
         }
 
-        const validate = (schema: Schema, input: any, errorName: string) => {
-          try {
-            return schema.validate(input);
-          } catch (e) {
-            e.name = errorName;
-            throw e;
-          }
+        if (!(lmethod in routeModules)) {
+          routeModules[lmethod] = {};
+        }
+        routeModules[lmethod][version] = {
+          summary: {
+            name: apiName,
+            params: params && paramsSchema.summary(),
+            query: query && querySchema.summary(),
+            body: body && bodySchema.summary(),
+            res: res && resSchema.summary(),
+            ...others,
+          },
+          middleware: compose([...preMiddleware, async (ctx, next) => {
+            if (/^multipart/.test(ctx.get('content-type'))) {
+              ctx.request.body = {
+                ...ctx.request.body.fields,
+                ...ctx.request.body.files,
+              };
+            }
+            ctx.body = validate(resSchema, await handler({
+              params: validate(paramsSchema, ctx.params, 'ParamsValidationError') || {},
+              query: validate(querySchema, ctx.query, 'QueryValidationError') || {},
+              body: validate(bodySchema, ctx.request.body, 'BodyValidationError') || {},
+              ctx,
+              next,
+            }), 'ResValidationError');
+          }]),
         };
-
-        router[lmethod]('/', ...preMiddleware, async (ctx, next) => {
-          if (/^multipart/.test(ctx.get('content-type'))) {
-            ctx.request.body = {
-              ...ctx.request.body.fields,
-              ...ctx.request.body.files,
-            };
-          }
-          ctx.body = validate(resSchema, await handler(
-            validate(paramsSchema, ctx.params, 'ParamsValidationError') || {},
-            validate(querySchema, ctx.query, 'QueryValidationError') || {},
-            validate(bodySchema, ctx.request.body, 'BodyValidationError') || {},
-            ctx, next,
-          ), 'ResValidationError');
-        });
       } else {
         console.error(`Method [${method}] is not allowed. ${link}`);
       }
     }
   });
+
+  Object.keys(routeModules).forEach(method => {
+    const lmethod = method as Methods;
+    const modules = routeModules[method];
+    memo.push({
+      method: lmethod,
+      path: pathname,
+      version: Object.keys(modules).reduce((mememo, version) => {
+        mememo[version] = modules[version].summary;
+        return mememo;
+      }, {} as any),
+    });
+    router[lmethod]('/', async (ctx, next) => {
+      const version = ctx.get('version') || ctx.query.version || 'default';
+      const module = modules[version];
+      if (module) {
+        const middleware = module.middleware;
+        await middleware(ctx, next);
+      } else {
+        ctx.throw(501);
+      }
+    });
+  });
+
   let doc: {
     meta: IMetaBase;
     path: string;
   } | undefined;
-  if (meta) {
+  if (meta && meta.notSubDoc !== true) {
     const memoCopy = [...memo];
     router.get('/api.doc', ctx => {
       ctx.body = {
@@ -177,6 +232,7 @@ const routesOfPath = (routesPath: string, plugins: Plugin[] = [], parent: string
     memo,
     router,
     doc,
+    subDocs,
   };
 };
 

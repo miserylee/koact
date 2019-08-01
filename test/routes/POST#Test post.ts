@@ -7,11 +7,7 @@ export default {
     name: String,
     gender: OptionalBoolean,
   },
-  async handler(params, query, { tel, name, gender }: { tel: string, name: string, gender?: boolean }) {
-    return {
-      tel,
-      name,
-      gender,
-    };
+  async handler({ body }: { body: { tel: string, name: string, gender?: boolean } }) {
+    return body;
   },
 } as IAPI;

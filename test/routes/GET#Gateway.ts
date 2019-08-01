@@ -5,8 +5,8 @@ export default {
     name: String,
   },
   res: String,
-  async handler(params, { name }: { name: string }): Promise<string> {
-    return `Hello ${name}`;
+  async handler({ query }: { query: { name: string } }): Promise<string> {
+    return `Hello ${query.name}`;
   },
   pre: [async (ctx, next) => {
     ctx.set('file', __filename);
