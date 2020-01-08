@@ -1,6 +1,6 @@
 {
   "name": "koact",
-  "version": "5.3.2",
+  "version": "5.4.0",
   "main": "./lib/index.js",
   "typings": "./lib/index.d.ts",
   "private": false,
@@ -26,6 +26,7 @@
     "koa": "^2.5.1",
     "mocha": "5.1.1",
     "pre-commit": "1.2.2",
+    "schema.io": "^0.6.3",
     "ts-node": "6.0.3",
     "tslint": "5.10.0",
     "tslint-clean-code": "0.2.7",
