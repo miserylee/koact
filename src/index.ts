@@ -43,6 +43,7 @@ export type Plugin = (api: IAPIBase, info: { method: string, name: string, path:
 
 export interface IOptions {
   resolves?: string[];
+  docSecret?: string;
 }
 
 const validate = (schema: Schema, input: any, errorName: string) => {
@@ -54,7 +55,7 @@ const validate = (schema: Schema, input: any, errorName: string) => {
   }
 };
 
-const routesOfPath = (routesPath: string, plugins: Plugin[] = [], parent: string = '', options: IOptions = {}) => {
+const routesOfPath = (routesPath: string, parentPre: Middleware[] = [], plugins: Plugin[] = [], parent: string = '', options: IOptions = {}) => {
   const router = new Router();
   const links = fs.readdirSync(routesPath);
   let memo: Array<{
@@ -70,15 +71,16 @@ const routesOfPath = (routesPath: string, plugins: Plugin[] = [], parent: string
       };
     };
   }> = [];
-  let metaPre: Middleware[] = [];
   const meta = (() => {
     try {
-      const { pre = [], ...others } = require(path.resolve(routesPath, 'META')).default || {} as IMeta;
-      const metaPlugins = others.plugins || [];
-      Reflect.deleteProperty(others, 'plugins');
-      metaPre = pre;
-      plugins = [...metaPlugins, ...plugins];
-      return others as IMetaBase;
+      const metaInfo = require(path.resolve(routesPath, 'META')).default || {} as IMeta;
+      const metaPlugins = metaInfo.plugins || [];
+      const metaPre = metaInfo.pre || [];
+      Reflect.deleteProperty(metaInfo, 'plugins');
+      Reflect.deleteProperty(metaInfo, 'pre');
+      plugins = [...plugins, ...metaPlugins];
+      parentPre = [...parentPre, ...metaPre];
+      return metaInfo as IMetaBase;
     } catch (error) {
       return;
     }
@@ -111,7 +113,7 @@ const routesOfPath = (routesPath: string, plugins: Plugin[] = [], parent: string
     const fullLink = path.resolve(routesPath, link);
     if (fs.statSync(fullLink).isDirectory()) {
       const p = `/${link.replace(/#/g, ':')}`;
-      const subRouter = routesOfPath(fullLink, plugins, `${parent}${p}`, options);
+      const subRouter = routesOfPath(fullLink, parentPre, plugins, `${parent}${p}`, options);
       if (subRouter.doc) {
         subDocs.push(subRouter.doc);
       }
@@ -147,7 +149,7 @@ const routesOfPath = (routesPath: string, plugins: Plugin[] = [], parent: string
         const bodySchema = new Schema(body);
         const resSchema = new Schema(res);
 
-        const preMiddleware: Middleware[] = [...metaPre, ...pre];
+        const preMiddleware: Middleware[] = [...parentPre, ...pre];
         if (!useCustomBodyParser && ['post', 'put'].includes(lmethod)) {
           preMiddleware.push(bodyParser({ multipart: true }));
         }
@@ -215,6 +217,15 @@ const routesOfPath = (routesPath: string, plugins: Plugin[] = [], parent: string
   } | undefined;
   if (meta && meta.notSubDoc !== true) {
     const memoCopy = [...memo];
+    if (options.docSecret) {
+      router.use('/api.doc', async (ctx, next) => {
+        const docSecret = ctx.query.docSecret;
+        if (!docSecret || docSecret !== options.docSecret) {
+          ctx.throw(403, 'Invalid secret for viewing api document.');
+        }
+        await next();
+      });
+    }
     router.get('/api.doc', ctx => {
       ctx.body = {
         meta,
@@ -237,7 +248,7 @@ const routesOfPath = (routesPath: string, plugins: Plugin[] = [], parent: string
 };
 
 const koact = (routesPath: string, plugins?: Plugin[], options: IOptions = {}) => {
-  const { router } = routesOfPath(routesPath, plugins, undefined, {
+  const { router } = routesOfPath(routesPath, [], plugins, undefined, {
     resolves: ['.js', '.ts', '.node'],
     ...options,
   });

@@ -302,6 +302,11 @@ error-inject@~1.0.0:
   version "1.0.0"
   resolved "https://registry.npmjs.org/error-inject/-/error-inject-1.0.0.tgz#e2b3d91b54aed672f309d950d154850fa11d4f37"
 
+erz@^0.0.5:
+  version "0.0.5"
+  resolved "https://registry.yarnpkg.com/erz/-/erz-0.0.5.tgz#58641ccc1d96b37665790fadd2562877187571a7"
+  integrity sha512-rPoHtjZPE4qujYHohUHwLh3didMEyYqlu8zTnnxKzjCFfmVDZYqdkAYUXujW8WL4rI4MY2nOb/Cm7wBTNmxJcg==
+
 escape-html@~1.0.1:
   version "1.0.3"
   resolved "https://registry.npmjs.org/escape-html/-/escape-html-1.0.3.tgz#0258eae4d3d0c0974de1c169188ef0051d1d1988"
@@ -670,9 +675,11 @@ safe-buffer@~5.1.0, safe-buffer@~5.1.1:
   resolved "https://registry.npmjs.org/safer-buffer/-/safer-buffer-2.1.2.tgz#44fa161b0187b9549dd84bb91802f9bd8385cd6a"
 
 schema.io@^0.6.3:
-  version "0.6.3"
-  resolved "https://registry.yarnpkg.com/schema.io/-/schema.io-0.6.3.tgz#4dab0270b66bd14640a453b9adeef8cc5a23bad4"
-  integrity sha512-K0DbT0aPzkgGjp897YEKqj2wBODUdN+u5BDQG56dOW69Jw4DHRLcvn4pHBFgusT0njzQfMUs119IFN9zkvnMZA==
+  version "0.6.6"
+  resolved "https://registry.yarnpkg.com/schema.io/-/schema.io-0.6.6.tgz#2e45ca9104597496c1e5487935edf479f03f6a5c"
+  integrity sha512-G1zo889AmOwhY1cVdrWgWOU7cXAW4V5VcRzXGejTUuY6LjzdFXZuhgIuSpvHJm1C849pMbH+4VRiyVBZr2T/8Q==
+  dependencies:
+    erz "^0.0.5"
 
 semver@^5.3.0:
   version "5.5.0"

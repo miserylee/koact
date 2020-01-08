@@ -16,6 +16,8 @@ koa.use(async (ctx, next) => {
     };
   }
 });
-koa.use(koact(path.resolve(__dirname, './routes')));
+koa.use(koact(path.resolve(__dirname, './routes'), [], {
+  docSecret: '123456',
+}));
 
 koa.listen(4000, () => console.log('server started.'));
