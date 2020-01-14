@@ -1,6 +1,6 @@
 {
   "name": "koact",
-  "version": "5.4.2",
+  "version": "5.4.3",
   "main": "./lib/index.js",
   "typings": "./lib/index.d.ts",
   "private": false,
@@ -17,6 +17,9 @@
     "document",
     "auto-doc"
   ],
+  "repository": {
+    "url": "https://github.com/miserylee/koact"
+  },
   "scripts": {
     "build": "rm -rf ./lib && tsc",
     "prebuild": "yarn run lint && yarn test",
