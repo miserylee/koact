@@ -6,7 +6,17 @@
   "private": false,
   "license": "MIT",
   "author": "MiseryLee <miserylee@foxmail.com>",
-  "description": "Your smart routes manager.",
+  "description": "Smart koa routes manager.",
+  "keywords": [
+    "koa",
+    "koact",
+    "router",
+    "routes",
+    "middleware",
+    "api",
+    "document",
+    "auto-doc"
+  ],
   "scripts": {
     "build": "rm -rf ./lib && tsc",
     "prebuild": "yarn run lint && yarn test",

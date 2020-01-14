@@ -27,6 +27,7 @@ export interface IAPIBase<P = any, Q = any, B = any, R = any> extends IObject {
 
 export interface IAPI<P = any, Q = any, B = any, R = any> extends IAPIBase<P, Q, B, R> {
   plugins?: Plugin[];
+  enhancers?: Enhancer[];
 }
 
 export interface IMetaBase extends IObject {
@@ -37,9 +38,12 @@ export interface IMetaBase extends IObject {
 export interface IMeta extends IMetaBase {
   pre?: Middleware[];
   plugins?: Plugin[];
+  enhancers?: Enhancer[];
 }
 
 export type Plugin = (api: IAPIBase, info: { method: string, name: string, path: string }) => IAPIBase;
+
+export type Enhancer = Plugin;
 
 export interface IOptions {
   resolves?: string[];
@@ -55,7 +59,7 @@ const validate = (schema: Schema, input: any, errorName: string) => {
   }
 };
 
-const routesOfPath = (routesPath: string, parentPre: Middleware[] = [], plugins: Plugin[] = [], parent: string = '', options: IOptions = {}) => {
+const routesOfPath = (routesPath: string, parentPre: Middleware[] = [], enhancers: Enhancer[] = [], parent: string = '', options: IOptions = {}) => {
   const router = new Router();
   const links = fs.readdirSync(routesPath);
   let memo: Array<{
@@ -74,11 +78,11 @@ const routesOfPath = (routesPath: string, parentPre: Middleware[] = [], plugins:
   const meta = (() => {
     try {
       const metaInfo = require(path.resolve(routesPath, 'META')).default || {} as IMeta;
-      const metaPlugins = metaInfo.plugins || [];
+      const metaEnhancers = [...(metaInfo.enhancers || []), ...(metaInfo.plugins || [])];
       const metaPre = metaInfo.pre || [];
       Reflect.deleteProperty(metaInfo, 'plugins');
       Reflect.deleteProperty(metaInfo, 'pre');
-      plugins = [...plugins, ...metaPlugins];
+      enhancers = [...enhancers, ...metaEnhancers];
       parentPre = [...parentPre, ...metaPre];
       return metaInfo as IMetaBase;
     } catch (error) {
@@ -113,7 +117,7 @@ const routesOfPath = (routesPath: string, parentPre: Middleware[] = [], plugins:
     const fullLink = path.resolve(routesPath, link);
     if (fs.statSync(fullLink).isDirectory()) {
       const p = `/${link.replace(/#/g, ':')}`;
-      const subRouter = routesOfPath(fullLink, parentPre, plugins, `${parent}${p}`, options);
+      const subRouter = routesOfPath(fullLink, parentPre, enhancers, `${parent}${p}`, options);
       if (subRouter.doc) {
         subDocs.push(subRouter.doc);
       }
@@ -134,10 +138,11 @@ const routesOfPath = (routesPath: string, parentPre: Middleware[] = [], plugins:
       if ((router as any).methods.includes(umethod)) {
         const lmethod = method.toLowerCase() as Methods;
         const api = require(fullLink).default || {} as IAPI;
-        const apiPlugins = api.plugins || [];
+        const apiEnhancers = [...(api.enhancers || []), ...(api.plugins || [])];
         Reflect.deleteProperty(api, 'plugins');
-        const { params, query, body, res, handler = async () => undefined, pre = [], useCustomBodyParser = false, ...others } = [...apiPlugins, ...plugins].reduce((a, plugin) => {
-          return plugin(a, {
+        Reflect.deleteProperty(api, 'enhancers');
+        const { params, query, body, res, handler = async () => undefined, pre = [], useCustomBodyParser = false, ...others } = [...apiEnhancers, ...enhancers].reduce((a, enhancer) => {
+          return enhancer(a, {
             name: apiName,
             method: umethod,
             path: pathname,
@@ -247,8 +252,8 @@ const routesOfPath = (routesPath: string, parentPre: Middleware[] = [], plugins:
   };
 };
 
-const koact = (routesPath: string, plugins?: Plugin[], options: IOptions = {}) => {
-  const { router } = routesOfPath(routesPath, [], plugins, undefined, {
+const koact = (routesPath: string, enhancers?: Enhancer[], options: IOptions = {}) => {
+  const { router } = routesOfPath(routesPath, [], enhancers, undefined, {
     resolves: ['.js', '.ts', '.node'],
     ...options,
   });
