@@ -76,16 +76,23 @@ const routesOfPath = (routesPath: string, parentPre: Middleware[] = [], enhancer
     };
   }> = [];
   const meta = (() => {
+    const metaPath = path.resolve(routesPath, 'META');
     try {
-      const metaInfo = require(path.resolve(routesPath, 'META')).default || {} as IMeta;
+      const metaInfo = require(metaPath).default || {} as IMeta;
       const metaEnhancers = [...(metaInfo.enhancers || []), ...(metaInfo.plugins || [])];
       const metaPre = metaInfo.pre || [];
       Reflect.deleteProperty(metaInfo, 'plugins');
+      Reflect.deleteProperty(metaInfo, 'enhancers');
       Reflect.deleteProperty(metaInfo, 'pre');
       enhancers = [...enhancers, ...metaEnhancers];
       parentPre = [...parentPre, ...metaPre];
       return metaInfo as IMetaBase;
     } catch (error) {
+      if (error.code === 'MODULE_NOT_FOUND') {
+        return;
+      }
+      console.error(`Failed requiring ${metaPath}`);
+      console.error(error);
       return;
     }
   })();
